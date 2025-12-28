@@ -16,49 +16,43 @@ export default function CreateProjectModal({
     const [name, setName] = useState("");
 
     const handleSubmit = () => {
-        if (!name.trim()) return;
+        if (!name.trim() || loading) return;
         onCreate(name);
     };
 
     return (
-        <div
-            style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.4)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 50,
-            }}
-        >
-            <div
-                style={{
-                    background: "rgba(128, 128, 128)",
-                    padding: 20,
-                    width: 350,
-                    borderRadius: 8,
-                }}
-            >
-                <h3>Create Project</h3>
+        // BACKDROP
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            {/* MODAL */}
+            <div className="w-full max-w-sm rounded-xl border border-gray-800 bg-gray-950 p-6 shadow-2xl">
+                <h3 className="text-xl font-semibold text-white mb-4">
+                    Create Project
+                </h3>
 
+                {/* INPUT */}
                 <input
                     type="text"
                     placeholder="Project name"
                     value={name}
+                    autoFocus
                     onChange={(e) => setName(e.target.value)}
-                    style={{
-                        width: "100%",
-                        padding: 8,
-                        marginTop: 10,
-                        marginBottom: 15,
-                    }}
+                    className="w-full rounded-md bg-black border border-gray-800 px-3 py-2 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
                 />
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                    <button onClick={onClose}>Cancel</button>
+                {/* ACTIONS */}
+                <div className="mt-6 flex justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 rounded-md text-gray-400 hover:text-white transition"
+                    >
+                        Cancel
+                    </button>
 
-                    <button onClick={handleSubmit} disabled={loading}>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading || !name.trim()}
+                        className="px-4 py-2 rounded-md bg-white text-black font-medium hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
                         {loading ? "Creating..." : "Create"}
                     </button>
                 </div>

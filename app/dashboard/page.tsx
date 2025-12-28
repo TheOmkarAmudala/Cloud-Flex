@@ -44,7 +44,6 @@ export default function Dashboard() {
         try {
             setCreating(true);
             await api.post("/projects", { name });
-
             setShowModal(false);
             await fetchProjects();
         } catch (err: any) {
@@ -58,37 +57,66 @@ export default function Dashboard() {
         }
     };
 
-
-    if (loading) return <p>Loading dashboard...</p>;
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-black text-gray-400">
+                Loading dashboard...
+            </div>
+        );
+    }
 
     return (
-        <div style={{ padding: 20 }}>
-            <header style={{ display: "flex", justifyContent: "space-between" }}>
-                <h1>Dashboard</h1>
-                <LogoutButton />
+        <div className="min-h-screen bg-black text-gray-200">
+            {/* HEADER */}
+            <header className="border-b border-gray-800">
+                <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+                    <h1 className="text-2xl font-semibold text-white">
+                        Dashboard
+                    </h1>
+                    <LogoutButton />
+                </div>
             </header>
 
-            <hr />
+            {/* MAIN */}
+            <main className="max-w-6xl mx-auto px-6 py-8">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-semibold text-gray-300">
+                        Your Projects
+                    </h2>
 
-            <section>
-                <h2>Your Projects</h2>
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="px-4 py-2 rounded-md bg-white text-black font-medium hover:bg-gray-200 transition"
+                    >
+                        + Create Project
+                    </button>
+                </div>
 
-                <button onClick={() => setShowModal(true)}>
-                    + Create Project
-                </button>
-
-                {projects.length === 0 && <p>No projects found</p>}
-
-                <ul>
-                    {projects.map((project) => (
-                        <li key={project.id}>
-                            <Link href={`/projects/${project.id}`}>
-                                {project.name}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-            </section>
+                {/* PROJECT LIST */}
+                {projects.length === 0 ? (
+                    <div className="border border-gray-800 rounded-lg p-10 text-center text-gray-500">
+                        No projects found. Create your first project 🚀
+                    </div>
+                ) : (
+                    <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {projects.map((project) => (
+                            <li key={project.id}>
+                                <Link
+                                    href={`/projects/${project.id}`}
+                                    className="block border border-gray-800 rounded-lg p-5 hover:border-gray-600 hover:bg-gray-900 transition"
+                                >
+                                    <h3 className="text-lg font-semibold text-white">
+                                        {project.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Open project →
+                                    </p>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </main>
 
             {showModal && (
                 <CreateProjectModal
