@@ -3,268 +3,150 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
-
-type User = {
-    id: string;
-    email: string;
-};
-
-type ProjectUser = {
-    id: string;
-    role: string;
-    user: User;
-};
-
-type Project = {
-    id: string;
-    name: string;
-    projectUsers: ProjectUser[];
-};
+import AssignUserModal from "@/components/AssignUserModal";
 
 export default function ProjectDetails() {
     const { id } = useParams();
     const router = useRouter();
 
-    const [project, setProject] = useState<Project | null>(null);
+    const [project, setProject] = useState<any>(null);
+    const [me, setMe] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [deleting, setDeleting] = useState(false);
+    const [showAssign, setShowAssign] = useState(false);
 
-    // ✏️ Edit project name
-    const [editing, setEditing] = useState(false);
-    const [name, setName] = useState("");
-    const [saving, setSaving] = useState(false);
-
-    // 👥 Assign user
-    const [assignEmail, setAssignEmail] = useState("");
-    const [assignRole, setAssignRole] = useState("developer");
-    const [assigning, setAssigning] = useState(false);
-
-    const fetchProject = async () => {
+    const fetchData = async () => {
         try {
-            const res = await api.get(`/projects/${id}`);
-            setProject(res.data);
-            setName(res.data.name);
+            const [projectRes, meRes] = await Promise.all([
+                api.get(`/projects/${id}`),
+                api.get("/auth/me"),
+            ]);
+
+            setProject(projectRes.data);
+            setMe(meRes.data);
         } catch {
-            alert("Project not found");
-            router.replace("/dashboard");
+            router.push("/dashboard");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            router.replace("/login");
-            return;
-        }
-
-        fetchProject();
+        fetchData();
     }, [id]);
-
-    const handleUpdate = async () => {
-        if (!name.trim()) return;
-
-        try {
-            setSaving(true);
-            await api.put(`/projects/${id}`, { name });
-            setEditing(false);
-            fetchProject();
-        } catch {
-            alert("You are not allowed to update this project");
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDelete = async () => {
-        const confirmDelete = confirm(
-            "Are you sure you want to delete this project?"
-        );
-        if (!confirmDelete) return;
-
-        try {
-            setDeleting(true);
-            await api.delete(`/projects/${id}`);
-            router.push("/dashboard");
-        } catch {
-            alert("You are not allowed to delete this project");
-        } finally {
-            setDeleting(false);
-        }
-    };
-
-    // 👥 Assign user to project
-    const assignUser = async () => {
-        if (!assignEmail) {
-            alert("Enter user email");
-            return;
-        }
-
-        try {
-            setAssigning(true);
-
-            // 1️⃣ Find user by email
-            const usersRes = await api.get("/users", {
-                params: { email: assignEmail },
-            });
-
-            const user = usersRes.data[0];
-            if (!user) {
-                alert("User not found");
-                return;
-            }
-
-            // 2️⃣ Assign user
-            await api.post(`/projects/${id}/users`, {
-                userId: user.id,
-                role: assignRole,
-            });
-
-            setAssignEmail("");
-            setAssignRole("developer");
-            fetchProject();
-        } catch (err: any) {
-            alert(err.response?.data?.message || "Assignment failed");
-        } finally {
-            setAssigning(false);
-        }
-    };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-black text-gray-400">
+            <div className="min-h-screen bg-black flex items-center justify-center text-gray-400">
                 Loading project...
             </div>
         );
     }
 
-    if (!project) return null;
+    const isAdminOrOwner =
+        me.globalRole === "admin" ||
+        project.projectUsers.some(
+            (pu: any) => pu.user.id === me.id && pu.role === "owner"
+        );
+
+    const updateRole = async (userId: string, role: string) => {
+        await api.put(`/projects/${id}/users/${userId}`, { role });
+        fetchData();
+    };
+
+    const removeUser = async (userId: string) => {
+        if (!confirm("Remove user from project?")) return;
+        await api.delete(`/projects/${id}/users/${userId}`);
+        fetchData();
+    };
 
     return (
         <div className="min-h-screen bg-black text-gray-200">
-            <main className="max-w-4xl mx-auto px-6 py-10">
+            <main className="max-w-5xl mx-auto px-6 py-10">
                 {/* HEADER */}
                 <div className="flex justify-between items-start mb-8">
-                    <div className="w-full max-w-xl">
-                        {!editing ? (
-                            <>
-                                <h1 className="text-3xl font-semibold text-white">
-                                    {project.name}
-                                </h1>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Project details & members
-                                </p>
-                            </>
-                        ) : (
-                            <input
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full rounded-md bg-black border border-gray-800 px-3 py-2 text-white"
-                            />
-                        )}
-
-                        {!editing ? (
-                            <button
-                                onClick={() => setEditing(true)}
-                                className="mt-2 text-sm text-gray-400 hover:text-white"
-                            >
-                                Edit project name
-                            </button>
-                        ) : (
-                            <div className="mt-3 flex gap-4">
-                                <button
-                                    onClick={() => {
-                                        setEditing(false);
-                                        setName(project.name);
-                                    }}
-                                    className="text-sm text-gray-400 hover:text-white"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleUpdate}
-                                    disabled={saving}
-                                    className="text-sm text-white hover:underline disabled:opacity-50"
-                                >
-                                    {saving ? "Saving..." : "Save"}
-                                </button>
-                            </div>
-                        )}
+                    <div>
+                        <h1 className="text-3xl font-semibold text-white">
+                            {project.name}
+                        </h1>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Manage users and roles
+                        </p>
                     </div>
 
-                    <button
-                        onClick={handleDelete}
-                        disabled={deleting}
-                        className="px-4 py-2 rounded-md border border-red-800 text-red-400 hover:bg-red-900/20 hover:text-red-300 disabled:opacity-50 transition"
-                    >
-                        {deleting ? "Deleting..." : "Delete Project"}
-                    </button>
+                    {isAdminOrOwner && (
+                        <button
+                            onClick={() => setShowAssign(true)}
+                            className="px-4 py-2 rounded-md bg-white text-black font-medium hover:bg-gray-200 transition"
+                        >
+                            + Assign User
+                        </button>
+                    )}
                 </div>
 
-                {/* ASSIGNED USERS */}
-                <section className="border border-gray-800 rounded-xl bg-gray-950 p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">
+                {/* USERS CARD */}
+                <section className="rounded-xl border border-gray-800 bg-gray-950 p-6">
+                    <h2 className="text-lg font-semibold text-white mb-4">
                         Assigned Users
-                    </h3>
+                    </h2>
 
                     {project.projectUsers.length === 0 ? (
                         <p className="text-gray-500">
-                            No users assigned to this project
+                            No users assigned to this project.
                         </p>
                     ) : (
                         <ul className="divide-y divide-gray-800">
-                            {project.projectUsers.map((pu) => (
+                            {project.projectUsers.map((pu: any) => (
                                 <li
                                     key={pu.id}
                                     className="flex justify-between items-center py-3"
                                 >
-                                    <span className="text-gray-300">
-                                        {pu.user.email}
-                                    </span>
+                                    <div>
+                                        <p className="text-gray-200">
+                                            {pu.user.email}
+                                        </p>
+                                    </div>
 
-                                    <span className="text-xs uppercase tracking-wide px-3 py-1 rounded-full border border-gray-700 text-gray-400">
-                                        {pu.role}
-                                    </span>
+                                    {isAdminOrOwner ? (
+                                        <div className="flex items-center gap-3">
+                                            <select
+                                                value={pu.role}
+                                                onChange={(e) =>
+                                                    updateRole(
+                                                        pu.user.id,
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className="rounded-md bg-black border border-gray-800 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-white/20"
+                                            >
+                                                <option value="owner">
+                                                    Owner
+                                                </option>
+                                                <option value="developer">
+                                                    Developer
+                                                </option>
+                                                <option value="viewer">
+                                                    Viewer
+                                                </option>
+                                            </select>
+
+                                            <button
+                                                onClick={() =>
+                                                    removeUser(pu.user.id)
+                                                }
+                                                className="text-sm text-red-400 hover:text-red-300 transition"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <span className="text-xs uppercase tracking-wide px-3 py-1 rounded-full border border-gray-700 text-gray-400">
+                                            {pu.role}
+                                        </span>
+                                    )}
                                 </li>
                             ))}
                         </ul>
                     )}
-                </section>
-
-                {/* ASSIGN USER */}
-                <section className="border border-gray-800 rounded-xl bg-gray-950 p-6 mt-8">
-                    <h3 className="text-lg font-semibold text-white mb-4">
-                        Assign User
-                    </h3>
-
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <input
-                            type="email"
-                            placeholder="User email"
-                            value={assignEmail}
-                            onChange={(e) => setAssignEmail(e.target.value)}
-                            className="flex-1 rounded-md bg-black border border-gray-800 px-3 py-2 text-gray-200"
-                        />
-
-                        <select
-                            value={assignRole}
-                            onChange={(e) => setAssignRole(e.target.value)}
-                            className="rounded-md bg-black border border-gray-800 px-3 py-2 text-gray-200"
-                        >
-                            <option value="viewer">Viewer</option>
-                            <option value="developer">Developer</option>
-                            <option value="owner">Owner</option>
-                        </select>
-
-                        <button
-                            onClick={assignUser}
-                            disabled={assigning}
-                            className="rounded-md bg-white text-black px-4 py-2 hover:bg-gray-200 disabled:opacity-50"
-                        >
-                            {assigning ? "Assigning..." : "Assign"}
-                        </button>
-                    </div>
                 </section>
 
                 {/* FOOTER */}
@@ -277,6 +159,14 @@ export default function ProjectDetails() {
                     </button>
                 </div>
             </main>
+
+            {showAssign && (
+                <AssignUserModal
+                    projectId={id as string}
+                    onClose={() => setShowAssign(false)}
+                    onSuccess={fetchData}
+                />
+            )}
         </div>
     );
 }

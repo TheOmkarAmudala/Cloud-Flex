@@ -8,16 +8,24 @@ import Link from "next/link";
 export default function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [companyName, setCompanyName] = useState("");
     const [loading, setLoading] = useState(false);
+
     const router = useRouter();
 
     const handleRegister = async () => {
         try {
             setLoading(true);
-            await api.post("/auth/register", { email, password, clientId: "client_1", });
+
+            await api.post("/auth/register", {
+                email,
+                password,
+                companyName, // ✅ IMPORTANT
+            });
+
             router.push("/login");
-        } catch {
-            alert("Registration failed");
+        } catch (err: any) {
+            alert(err.response?.data?.message || "Registration failed");
         } finally {
             setLoading(false);
         }
@@ -29,6 +37,15 @@ export default function Register() {
                 <h1 className="text-2xl font-semibold text-white mb-6 text-center">
                     Create your account
                 </h1>
+
+                {/* COMPANY */}
+                <input
+                    type="text"
+                    placeholder="Company name"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="w-full mb-4 rounded-md bg-black border border-gray-800 px-3 py-2 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
 
                 {/* EMAIL */}
                 <input
@@ -51,7 +68,7 @@ export default function Register() {
                 {/* ACTION */}
                 <button
                     onClick={handleRegister}
-                    disabled={loading || !email || !password}
+                    disabled={loading || !email || !password || !companyName}
                     className="w-full rounded-md bg-white text-black font-medium py-2 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                     {loading ? "Creating account..." : "Register"}
