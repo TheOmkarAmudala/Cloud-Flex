@@ -73,6 +73,8 @@ export default function Dashboard() {
                     <h1 className="text-2xl font-semibold text-white">
                         Dashboard
                     </h1>
+                    <Link href="/profile">Profile</Link>
+
                     <LogoutButton />
                 </div>
             </header>
